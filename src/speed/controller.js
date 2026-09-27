@@ -129,16 +129,25 @@ export function createSpeedController({ win, getPlayer, notify, configRead }) {
     }
   }
 
+  /**
+   * Stops the Web Audio engine of the previous MediaSource. Needed also when the
+   * next one plays at 1x with the native audio: YouTube reuses the same <video>,
+   * and an engine left alive keeps following it and plays its buffered audio
+   * over the native track (two audio tracks after going back to Normal).
+   */
+  function releaseAudioSink() {
+    if (!activeSink) return;
+    activeSink.engine.destroy();
+    if (activeSink.element)
+      activeSink.element.removeEventListener(
+        'volumechange',
+        activeSink.listener
+      );
+    activeSink = null;
+  }
+
   function createAudioSink({ speed, element }) {
-    if (activeSink) {
-      activeSink.engine.destroy();
-      if (activeSink.element)
-        activeSink.element.removeEventListener(
-          'volumechange',
-          activeSink.listener
-        );
-      activeSink = null;
-    }
+    releaseAudioSink();
 
     const engine = new AudioEngine({ win, speed, onError });
     if (element) {
@@ -187,6 +196,7 @@ export function createSpeedController({ win, getPlayer, notify, configRead }) {
     onRateRequest,
     onError,
     createAudioSink,
+    releaseAudioSink,
     handleKey
   };
 }

@@ -19,7 +19,7 @@ import { attachElementShim } from './element-shim.js';
 
 export function installMseHook(
   win,
-  { getSpeed, createAudioSink, onRateRequest, onError }
+  { getSpeed, createAudioSink, onRateRequest, onError, onNativeAudio }
 ) {
   const origAddSourceBuffer = win.MediaSource.prototype.addSourceBuffer;
   const origCreateObjectURL = win.URL.createObjectURL;
@@ -73,7 +73,12 @@ export function installMseHook(
   }
 
   win.MediaSource.prototype.addSourceBuffer = function (mime) {
-    if (!decided.has(this)) decided.set(this, getSpeed());
+    if (!decided.has(this)) {
+      decided.set(this, getSpeed());
+      // A MediaSource at 1x plays the native audio: whatever engine the previous
+      // one had must stop now, or both are heard.
+      if (decided.get(this) === 1.0 && onNativeAudio) onNativeAudio();
+    }
     const speed = decided.get(this);
     if (speed === 1.0) {
       return origAddSourceBuffer.call(this, mime);

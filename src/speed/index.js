@@ -26,7 +26,8 @@ export function installSpeedFeature(win, { notify, configRead, getPlayer }) {
     getSpeed: controller.getSpeed,
     createAudioSink: controller.createAudioSink,
     onRateRequest: controller.onRateRequest,
-    onError: controller.onError
+    onError: controller.onError,
+    onNativeAudio: controller.releaseAudioSink
   });
 
   // YouTube's own "Playback speed" menu: enabled in the player config, and bound
