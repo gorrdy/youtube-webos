@@ -104,6 +104,13 @@ const configOptions = new Map([
       default: false,
       desc: 'Show dislike counts (Return YouTube Dislike)'
     }
+  ],
+  [
+    'forceEnglishSubtitles',
+    {
+      default: false,
+      desc: 'Add auto-translated English subtitles option'
+    }
   ]
 ]);
 
