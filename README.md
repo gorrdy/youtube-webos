@@ -44,6 +44,19 @@
 >   `structuredClone`, which throws on functions and drops `toJSON`. It now
 >   copies only the path it modifies.
 > - #467 no longer breaks `JSON.parse('null')`.
+> - Per-video features (e.g. forcing max quality) now also run when the same
+>   video is closed and opened again.
+> - SponsorBlock now also runs when the app starts directly on a video (deep
+>   link, cast, autostart).
+>
+> Features added in this fork (toggle with the green button):
+>
+> - Prefer the original audio track over (auto-)dubbed ones (#341, on by default).
+> - Hide product QR codes over videos (#385, on by default).
+> - Disable the "Continue watching?" prompt (#86, #428, on by default).
+> - SponsorBlock manual skip: press RED to skip a segment instead of skipping
+>   automatically (#72, off by default).
+> - Auto-translated subtitles follow the TV language instead of always English.
 
 ---
 
