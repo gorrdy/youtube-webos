@@ -73,7 +73,7 @@ const configOptions = new Map([
   [
     'forceVp9Codec',
     {
-      default: true,
+      default: false,
       desc: 'Force VP09 video codec'
     }
   ],

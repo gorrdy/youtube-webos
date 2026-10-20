@@ -95,8 +95,11 @@ function filterFormats(formats: StreamingFormat[] | undefined) {
   return originalLength - formats.length;
 }
 
-function forceVp09(playerResponse: PlayerResponse) {
+function forceVp09(playerResponse: PlayerResponse | null) {
   if (!shouldForce()) return;
+
+  // `JSON.parse` can return `null` or other primitives.
+  if (typeof playerResponse !== 'object' || playerResponse === null) return;
 
   const streamingData = playerResponse.streamingData;
   if (!streamingData) return;
