@@ -97,6 +97,13 @@ const configOptions = new Map([
       default: true,
       desc: 'Block webOS Cast service'
     }
+  ],
+  [
+    'enableReturnYouTubeDislike',
+    {
+      default: false,
+      desc: 'Show dislike counts (Return YouTube Dislike)'
+    }
   ]
 ]);
 
