@@ -83,4 +83,8 @@ export interface YTPlayer extends HTMLElement {
   getPlaybackRate(): number;
 
   setPlaybackRate(rate: number): void;
+
+  getCurrentTime(): number;
+
+  seekTo(seconds: number, allowSeekAhead?: boolean): void;
 }
