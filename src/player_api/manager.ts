@@ -61,6 +61,14 @@ class PlayerManager
 
     console.debug('[PlayerManager] player state changed', { diff });
 
+    // `isUnstarted` is set when a video is closed or loaded, but not when the
+    // quality changes. Treat the next playback as a new video, even if the
+    // same video is opened again.
+    if (diff.isUnstarted) {
+      this.#lastVideoID = null;
+      return;
+    }
+
     const currentVideoID = this.currentVideoID;
     if (this.#lastVideoID !== currentVideoID) {
       if (!currentVideoID) throw new Error('unexpected `null` video ID');
