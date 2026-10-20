@@ -18,6 +18,35 @@
 
 ---
 
+> [!IMPORTANT]
+> **This is a fork of [webosbrew/youtube-webos](https://github.com/webosbrew/youtube-webos).**
+> The `tv-build` branch is upstream `main` plus pending upstream pull requests and a few fixes,
+> tested on an LG OLED55C44LA (webOS 10.3.1).
+>
+> Merged from upstream (not yet merged there):
+>
+> - [`fix-47`](https://github.com/webosbrew/youtube-webos/tree/fix-47): version offset so the LG Content Store does not overwrite the app (#47)
+> - #487 wait for network before loading YouTube
+> - #482 casting from phone (#401)
+> - #467 force VP9 codec (opt-in here)
+> - #481 keep the clock pinned
+> - #477 Return YouTube Dislike (opt-in here)
+> - #472 auto-translated English subtitles
+> - #463 automatic live stream catch-up
+> - #484 playback speed (yellow button)
+>
+> Fixes in this fork:
+>
+> - Videos resuming from a saved position no longer stall on a spinner when
+>   "Force max resolution" is enabled (#397): the forced quality switch reset the
+>   playback position to 0.
+> - The `JSON.stringify` hook from #469 deep-cloned every payload with
+>   `structuredClone`, which throws on functions and drops `toJSON`. It now
+>   copies only the path it modifies.
+> - #467 no longer breaks `JSON.parse('null')`.
+
+---
+
 ## Features
 
 - Ad Blocking
