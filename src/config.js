@@ -118,6 +118,13 @@ const configOptions = new Map([
       default: false,
       desc: 'Reduce live stream delay (skip to live edge)'
     }
+  ],
+  [
+    'enablePlaybackSpeed',
+    {
+      default: true,
+      desc: 'Playback speed (YELLOW button)'
+    }
   ]
 ]);
 
