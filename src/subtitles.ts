@@ -1,20 +1,20 @@
 import { configRead } from './config';
 /**
- * Makes an "English" auto-translated subtitle track selectable on the TV.
+ * Makes an auto-translated subtitle track in the TV's UI language selectable.
  *
  * The webOS/leanback captions menu only lists the tracks present in the
  * `/player` response's `captionTracks`. Unlike the desktop web player, it does
- * not expose the "auto-translate" submenu built from `translationLanguages`
- * (and TV responses omit that list anyway). So for a video whose captions are
- * in another language there is no way to pick English from the UI.
+ * not expose the "auto-translate" submenu built from `translationLanguages`.
+ * So for a video whose captions are in another language there is no way to
+ * pick a translation from the UI.
  *
  * We fix this by intercepting the `/player` JSON response (via the same
  * `JSON.parse` hook technique used by adblock) and injecting a synthetic
- * English track. We clone an existing caption track — preserving all of its
- * `baseUrl` query params (auth / `pot` / signature) — and add `&tlang=en`, the
+ * track. We clone an existing caption track — preserving all of its `baseUrl`
+ * query params (auth / `pot` / signature) — and add `&tlang=<lang>`, the
  * parameter YouTube's timedtext server uses to machine-translate any track.
- * The clone then shows up as a normal, directly-selectable option named
- * "English" in the captions menu.
+ * The clone then shows up as a normal, directly-selectable option in the
+ * captions menu.
  */
 
 interface CaptionTrackName {
@@ -49,24 +49,64 @@ interface CaptionsTracklistRenderer {
   translationLanguages?: TranslationLanguage[];
 }
 
-const ENGLISH_LABEL = 'English(Auto-generated-forced)';
+/**
+ * YouTube language code for the TV's UI language, e.g. `cs` for `cs-CZ`.
+ * Falls back to English.
+ */
+function getTargetLanguage(): string {
+  const [primary = 'en', region = ''] = (navigator.language || 'en')
+    .toLowerCase()
+    .split('-');
 
-function isEnglish(languageCode: string | undefined) {
-  return /^en\b/i.test(languageCode ?? '');
+  // YouTube still uses legacy/script codes for these.
+  if (primary === 'he') return 'iw';
+  if (primary === 'zh') {
+    return ['tw', 'hk', 'mo', 'hant'].includes(region) ? 'zh-Hant' : 'zh-Hans';
+  }
+  return primary;
+}
+
+const TARGET_LANGUAGE = getTargetLanguage();
+
+function isTargetLanguage(languageCode: string | undefined) {
+  const code = (languageCode ?? '').toLowerCase();
+  const target = TARGET_LANGUAGE.toLowerCase();
+  return code === target || code.startsWith(target + '-');
+}
+
+function getLabel(renderer: CaptionsTracklistRenderer) {
+  // `translationLanguages` doesn't list every language the timedtext server
+  // can translate to (e.g. no Czech on webOS), so only use it for the name.
+  const listed = renderer.translationLanguages?.find((l) =>
+    isTargetLanguage(l.languageCode)
+  )?.languageName;
+  let name = listed?.simpleText ?? listed?.runs?.[0]?.text;
+
+  if (!name && typeof Intl !== 'undefined' && 'DisplayNames' in Intl) {
+    try {
+      name = new Intl.DisplayNames([TARGET_LANGUAGE], {
+        type: 'language'
+      }).of(TARGET_LANGUAGE);
+    } catch {
+      // Unknown code, fall through.
+    }
+  }
+
+  return `${name ?? TARGET_LANGUAGE} (auto-translated)`;
 }
 
 /** Mirror the `name` shape of the source track so the renderer stays happy. */
-function makeName(source: CaptionTrackName): CaptionTrackName {
+function makeName(source: CaptionTrackName, label: string): CaptionTrackName {
   if (source && Array.isArray(source.runs)) {
-    return { runs: [{ text: ENGLISH_LABEL }] };
+    return { runs: [{ text: label }] };
   }
-  return { simpleText: ENGLISH_LABEL };
+  return { simpleText: label };
 }
 
 function buildTranslatedUrl(baseUrl: string): string | null {
   try {
     const url = new URL(baseUrl, document.location.href);
-    url.searchParams.set('tlang', 'en');
+    url.searchParams.set('tlang', TARGET_LANGUAGE);
     return url.toString();
   } catch (err) {
     console.warn('[subtitles] Could not parse caption baseUrl', baseUrl, err);
@@ -74,22 +114,23 @@ function buildTranslatedUrl(baseUrl: string): string | null {
   }
 }
 
-function injectEnglishTrack(renderer: CaptionsTracklistRenderer) {
+function injectTranslatedTrack(renderer: CaptionsTracklistRenderer) {
   const tracks = renderer.captionTracks;
   if (!Array.isArray(tracks) || tracks.length === 0) return;
 
-  // English (native or auto-generated) is already offered — nothing to do.
-  if (tracks.some((t) => isEnglish(t.languageCode))) return;
+  // The target language (native or auto-generated) is already offered.
+  if (tracks.some((t) => isTargetLanguage(t.languageCode))) return;
 
   // Pick an existing track as the translation source and point it at YouTube's
-  // machine translation. We don't gate on `translationLanguages` — TV responses
-  // omit it — and `buildTranslatedUrl` preserves the source's auth query params.
-  const source = tracks.find((t) => !isEnglish(t.languageCode)) ?? tracks[0];
+  // machine translation. `buildTranslatedUrl` preserves the source's auth
+  // query params.
+  const source = tracks[0];
   if (!source) return;
 
   const baseUrl = buildTranslatedUrl(source.baseUrl);
   if (!baseUrl) return;
-  // Build a clean English track rather than spreading `...source`: the auth is
+  const label = getLabel(renderer);
+  // Build a clean track rather than spreading `...source`: the auth is
   // carried by `baseUrl`, and copying the source would drag along wrong fields
   // (e.g. `rtl: true` from an Arabic track, or `kind: "asr"`). A distinct
   // `vssId`/`languageCode` is required so the menu doesn't collapse it into the
@@ -97,11 +138,11 @@ function injectEnglishTrack(renderer: CaptionsTracklistRenderer) {
   const newIndex =
     tracks.push({
       baseUrl,
-      name: makeName(source.name),
-      vssId: '.en',
-      languageCode: 'en',
+      name: makeName(source.name, label),
+      vssId: '.' + TARGET_LANGUAGE,
+      languageCode: TARGET_LANGUAGE,
       isTranslatable: true,
-      trackName: ENGLISH_LABEL
+      trackName: label
     }) - 1;
 
   // The caption menu is built from each audio track's `captionTrackIndices`,
@@ -119,7 +160,9 @@ function injectEnglishTrack(renderer: CaptionsTracklistRenderer) {
     }
   }
 
-  console.info('[subtitles] Injected auto-translated English caption track');
+  console.info(
+    `[subtitles] Injected auto-translated caption track (${TARGET_LANGUAGE})`
+  );
 }
 
 const origParse = JSON.parse;
@@ -127,7 +170,7 @@ JSON.parse = function (this: unknown) {
   // eslint-disable-next-line prefer-rest-params
   const r = origParse.apply(this, arguments as never);
 
-  if (!configRead('forceEnglishSubtitles')) {
+  if (!configRead('forceTranslatedSubtitles')) {
     return r;
   }
 
@@ -135,7 +178,7 @@ JSON.parse = function (this: unknown) {
     const renderer: CaptionsTracklistRenderer | undefined =
       r?.captions?.playerCaptionsTracklistRenderer;
     if (renderer) {
-      injectEnglishTrack(renderer);
+      injectTranslatedTrack(renderer);
     }
   } catch (err) {
     console.warn('[subtitles] Failed to process captions', err);

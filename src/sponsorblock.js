@@ -57,6 +57,8 @@ class SponsorBlockHandler {
 
   scheduleSkipHandler = null;
   durationChangeHandler = null;
+  keyHandler = null;
+  pendingSkip = null;
   segments = null;
   skippableCategories = [];
 
@@ -95,6 +97,11 @@ class SponsorBlockHandler {
 
     this.scheduleSkipHandler = () => this.scheduleSkip();
     this.durationChangeHandler = () => this.buildOverlay();
+
+    this.keyHandler = (evt) => this.handleKey(evt);
+    document.addEventListener('keydown', this.keyHandler, true);
+    document.addEventListener('keypress', this.keyHandler, true);
+    document.addEventListener('keyup', this.keyHandler, true);
 
     this.attachVideo();
     this.buildOverlay();
@@ -293,6 +300,12 @@ class SponsorBlockHandler {
         }
 
         const skipName = barTypes[segment.category]?.name || segment.category;
+
+        if (configRead('enableSponsorBlockManualSkip')) {
+          this.promptSkip(segment, skipName);
+          return;
+        }
+
         console.debug(this.videoID, 'Skipping', segment);
         showNotification(`Skipping ${skipName}`, 2000, 'indigo');
         this.video.currentTime = end;
@@ -302,10 +315,49 @@ class SponsorBlockHandler {
     );
   }
 
+  /** Offer to skip `segment` with the red button instead of skipping it. */
+  promptSkip(segment, skipName) {
+    // `scheduleSkip` looks back a little, so it can fire twice per segment.
+    if (this.pendingSkip === segment) return;
+
+    const [, end] = segment.segment;
+    this.pendingSkip = segment;
+    console.debug(this.videoID, 'Offering to skip', segment);
+
+    const remaining = Math.min(end - this.video.currentTime, 10);
+    showNotification(`Press RED to skip ${skipName}`, remaining * 1000, 'red');
+  }
+
+  handleKey(evt) {
+    // Red button: 403 on webOS, 166 after YouTube remaps it.
+    const code = evt.keyCode || evt.charCode;
+    if (code !== 403 && code !== 166) return;
+
+    const segment = this.pendingSkip;
+    if (!segment || this.video.currentTime >= segment.segment[1]) return;
+
+    evt.preventDefault();
+    evt.stopPropagation();
+    if (evt.type !== 'keydown') return;
+
+    const skipName = barTypes[segment.category]?.name || segment.category;
+    console.debug(this.videoID, 'Skipping on request', segment);
+    showNotification(`Skipping ${skipName}`, 2000, 'indigo');
+    this.pendingSkip = null;
+    this.video.currentTime = segment.segment[1];
+  }
+
   destroy() {
     console.debug(this.videoID, 'Destroying');
 
     this.active = false;
+
+    if (this.keyHandler) {
+      document.removeEventListener('keydown', this.keyHandler, true);
+      document.removeEventListener('keypress', this.keyHandler, true);
+      document.removeEventListener('keyup', this.keyHandler, true);
+      this.keyHandler = null;
+    }
 
     if (this.nextSkipTimeout) {
       clearTimeout(this.nextSkipTimeout);
@@ -364,42 +416,43 @@ function uninitializeSponsorblock() {
   window.sponsorblock = null;
 }
 
-window.addEventListener(
-  'hashchange',
-  () => {
-    const newURL = new URL(location.hash.substring(1), location.href);
-    // uninitialize sponsorblock when not on `/watch` path, to prevent
-    // it from attaching to playback preview video element loaded on
-    // home page
-    if (newURL.pathname !== '/watch' && window.sponsorblock) {
-      console.debug('uninitializing sponsorblock on a non-video page');
-      uninitializeSponsorblock();
-      return;
+function handleLocationChange() {
+  const newURL = new URL(location.hash.substring(1), location.href);
+  // uninitialize sponsorblock when not on `/watch` path, to prevent
+  // it from attaching to playback preview video element loaded on
+  // home page
+  if (newURL.pathname !== '/watch' && window.sponsorblock) {
+    console.debug('uninitializing sponsorblock on a non-video page');
+    uninitializeSponsorblock();
+    return;
+  }
+
+  const videoID = newURL.searchParams.get('v');
+  const needsReload =
+    videoID && (!window.sponsorblock || window.sponsorblock.videoID != videoID);
+
+  console.debug(
+    'hashchange',
+    videoID,
+    window.sponsorblock,
+    window.sponsorblock ? window.sponsorblock.videoID : null,
+    needsReload
+  );
+
+  if (needsReload) {
+    uninitializeSponsorblock();
+
+    if (configRead('enableSponsorBlock')) {
+      window.sponsorblock = new SponsorBlockHandler(videoID);
+      window.sponsorblock.init();
+    } else {
+      console.info('SponsorBlock disabled, not loading');
     }
+  }
+}
 
-    const videoID = newURL.searchParams.get('v');
-    const needsReload =
-      videoID &&
-      (!window.sponsorblock || window.sponsorblock.videoID != videoID);
+window.addEventListener('hashchange', handleLocationChange, false);
 
-    console.debug(
-      'hashchange',
-      videoID,
-      window.sponsorblock,
-      window.sponsorblock ? window.sponsorblock.videoID : null,
-      needsReload
-    );
-
-    if (needsReload) {
-      uninitializeSponsorblock();
-
-      if (configRead('enableSponsorBlock')) {
-        window.sponsorblock = new SponsorBlockHandler(videoID);
-        window.sponsorblock.init();
-      } else {
-        console.info('SponsorBlock disabled, not loading');
-      }
-    }
-  },
-  false
-);
+// The app can start directly on a video (deep link, cast, autostart), where
+// no `hashchange` fires for it.
+handleLocationChange();

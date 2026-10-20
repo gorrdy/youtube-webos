@@ -106,10 +106,10 @@ const configOptions = new Map([
     }
   ],
   [
-    'forceEnglishSubtitles',
+    'forceTranslatedSubtitles',
     {
       default: false,
-      desc: 'Add auto-translated English subtitles option'
+      desc: 'Add auto-translated subtitles in the TV language'
     }
   ],
   [
@@ -124,6 +124,34 @@ const configOptions = new Map([
     {
       default: true,
       desc: 'Playback speed (YELLOW button)'
+    }
+  ],
+  [
+    'forceOriginalAudio',
+    {
+      default: true,
+      desc: 'Prefer original audio over dubbed tracks'
+    }
+  ],
+  [
+    'hideProductQrCodes',
+    {
+      default: true,
+      desc: 'Hide product QR codes over videos'
+    }
+  ],
+  [
+    'disableStillWatchingPrompt',
+    {
+      default: true,
+      desc: 'Disable "Continue watching?" prompt'
+    }
+  ],
+  [
+    'enableSponsorBlockManualSkip',
+    {
+      default: false,
+      desc: 'Ask before skipping (RED button to skip)'
     }
   ]
 ]);

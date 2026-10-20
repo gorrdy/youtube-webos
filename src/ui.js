@@ -16,6 +16,7 @@ const ARROW_KEY_CODE = { 37: 'left', 38: 'up', 39: 'right', 40: 'down' };
 
 const colorCodeMap = new Map([
   [403, 'red'],
+  [166, 'red'],
 
   [404, 'green'],
   [172, 'green'],
@@ -134,12 +135,16 @@ function createOptionsPanel() {
   elmContainer.appendChild(createConfigCheckbox('autoAccountSelect'));
   elmContainer.appendChild(createConfigCheckbox('blockWebosCast'));
   elmContainer.appendChild(createConfigCheckbox('enableReturnYouTubeDislike'));
-  elmContainer.appendChild(createConfigCheckbox('forceEnglishSubtitles'));
+  elmContainer.appendChild(createConfigCheckbox('forceTranslatedSubtitles'));
+  elmContainer.appendChild(createConfigCheckbox('forceOriginalAudio'));
   elmContainer.appendChild(createConfigCheckbox('enableLiveCatchup'));
+  elmContainer.appendChild(createConfigCheckbox('hideProductQrCodes'));
+  elmContainer.appendChild(createConfigCheckbox('disableStillWatchingPrompt'));
   elmContainer.appendChild(createConfigCheckbox('enableSponsorBlock'));
 
   const elmBlock = document.createElement('blockquote');
 
+  elmBlock.appendChild(createConfigCheckbox('enableSponsorBlockManualSkip'));
   elmBlock.appendChild(createConfigCheckbox('enableSponsorBlockSponsor'));
   elmBlock.appendChild(createConfigCheckbox('enableSponsorBlockIntro'));
   elmBlock.appendChild(createConfigCheckbox('enableSponsorBlockOutro'));
