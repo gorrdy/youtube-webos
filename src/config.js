@@ -111,6 +111,13 @@ const configOptions = new Map([
       default: false,
       desc: 'Add auto-translated English subtitles option'
     }
+  ],
+  [
+    'enableLiveCatchup',
+    {
+      default: false,
+      desc: 'Reduce live stream delay (skip to live edge)'
+    }
   ]
 ]);
 

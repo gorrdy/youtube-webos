@@ -135,6 +135,7 @@ function createOptionsPanel() {
   elmContainer.appendChild(createConfigCheckbox('blockWebosCast'));
   elmContainer.appendChild(createConfigCheckbox('enableReturnYouTubeDislike'));
   elmContainer.appendChild(createConfigCheckbox('forceEnglishSubtitles'));
+  elmContainer.appendChild(createConfigCheckbox('enableLiveCatchup'));
   elmContainer.appendChild(createConfigCheckbox('enableSponsorBlock'));
 
   const elmBlock = document.createElement('blockquote');
