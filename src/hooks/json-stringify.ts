@@ -15,14 +15,27 @@ function stringify(
   space?: string | number
 ): string {
   if (!isPrimitive(value)) {
-    value = structuredClone(value);
     // TODO: add below to a dump-level logger
     // console.debug('JSON.stringify', value, replacer, space);
 
     // @ts-expect-error TS doesn't allow optional chaining on `unknown`. See: https://github.com/microsoft/TypeScript/issues/37700
-    const ctx = value?.playbackContext?.contentPlaybackContext as unknown;
+    const playbackContext = value?.playbackContext as unknown;
+    // @ts-expect-error TS doesn't allow optional chaining on `unknown`. See: https://github.com/microsoft/TypeScript/issues/37700
+    const ctx = playbackContext?.contentPlaybackContext as unknown;
     if (!isPrimitive(ctx)) {
-      (ctx as Record<string, unknown>).isInlinePlaybackNoAd = true;
+      // Objects are sometimes frozen by YT to prevent modification. Shallow
+      // copy only the path we modify; a deep clone (`structuredClone`) throws
+      // on functions, drops `toJSON` and runs on every stringify call.
+      value = {
+        ...(value as Record<string, unknown>),
+        playbackContext: {
+          ...(playbackContext as Record<string, unknown>),
+          contentPlaybackContext: {
+            ...(ctx as Record<string, unknown>),
+            isInlinePlaybackNoAd: true
+          }
+        }
+      };
       console.info(`[JSON.stringify] Set isInlinePlaybackNoAd`);
     }
   }
