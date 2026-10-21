@@ -27,6 +27,11 @@ const makeConfig = (_env, argv) => [
      */
     devtool: argv.mode === 'development' ? 'inline-source-map' : 'source-map',
 
+    // Don't let files from older builds end up in the package.
+    output: {
+      clean: true
+    },
+
     optimization: {
       /**
        * terser doesn't pickup browserlist config

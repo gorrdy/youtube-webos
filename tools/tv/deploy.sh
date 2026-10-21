@@ -46,6 +46,7 @@ tunnel 2222 9922  # ares
 tunnel 19998 9998 # web inspector, used by tools/tv/cdp.cjs
 
 if [[ -n $1 ]]; then
+  [[ $1 =~ '^[A-Za-z0-9_-]{11}$' ]] || { echo "Not a YouTube video ID: $1" >&2; exit 2; }
   ares-launch --device "$ARES_DEVICE" "$APP_ID" -p "{\"contentTarget\":\"v=$1\"}" | tail -1
 else
   ares-launch --device "$ARES_DEVICE" "$APP_ID" | tail -1

@@ -129,9 +129,15 @@ async function monitor(cdp, seconds, consoleFilter) {
     } else if (msg.method === 'Runtime.exceptionThrown') {
       const d = msg.params.exceptionDetails;
       log(`EXCEPTION: ${(d.exception?.description || d.text).split('\n')[0]}`);
+    } else if (msg.method === 'Log.entryAdded') {
+      // Browser messages, e.g. requests blocked by CORS or mixed content.
+      const e = msg.params.entry;
+      if (Date.now() - t0 > 500 && consoleFilter.test(e.text))
+        log(`log.${e.level}: ${e.text.slice(0, 200)} ${e.url || ''}`);
     }
   });
   await cdp.send('Runtime.enable');
+  await cdp.send('Log.enable');
 
   let last = '';
   const timer = setInterval(async () => {
