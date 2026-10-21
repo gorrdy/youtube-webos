@@ -25,6 +25,8 @@ pnpm run -s lint:tsc
 pnpm run -s lint:eslint
 pnpm run -s test:unit >/dev/null 2>&1 || pnpm run -s test:unit
 pnpm run -s build >/dev/null
+# Personal overrides (gitignored), e.g. icons that must not be published.
+if [[ -d assets-local ]]; then cp assets-local/*.png dist/; fi
 pnpm run -s test:compat >/dev/null
 rm -f "${APP_ID}"_*.ipk
 pnpm run -s package >/dev/null

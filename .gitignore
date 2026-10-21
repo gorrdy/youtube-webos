@@ -3,3 +3,6 @@
 /dist/
 .DS_Store
 /.vscode/
+
+# Personal overrides used by tools/tv/deploy.sh (e.g. icons that must not be published)
+assets-local/
