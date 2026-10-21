@@ -57,6 +57,16 @@
 > - SponsorBlock manual skip: press RED to skip a segment instead of skipping
 >   automatically (#72, off by default).
 > - Auto-translated subtitles follow the TV language instead of always English.
+>
+> Developing on a TV (Developer Mode, SSH host `lgtv` in `~/.ssh/config`):
+>
+> - `tools/tv/deploy.sh [videoId]` lints, tests, builds, installs and launches
+>   the app.
+> - `node tools/tv/cdp.cjs eval '<js>' | key <keyCode> | monitor [seconds]`
+>   inspects the running app through the web inspector.
+> - `pnpm run test:json-hooks` tests the JSON response filters in
+>   `src/response-filters/`, which every `JSON.parse` filter now goes through
+>   (`src/hooks/json-parse.ts`).
 
 ---
 

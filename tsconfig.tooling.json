@@ -18,5 +18,7 @@
     ".prettierrc.js",
     "lint-staged.config.js",
     "postcss.config.ts"
-  ]
+  ],
+  // Untyped dev helpers for testing on a TV.
+  "exclude": ["./tools/tv"]
 }
