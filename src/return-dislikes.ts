@@ -5,16 +5,13 @@ import './return-dislikes.css';
 import { showNotification } from './ui.js';
 
 interface RYDData {
-  id: string;
   likes: number;
   dislikes: number;
-  rating: number;
-  viewCount: number;
-  deleted: boolean;
 }
 
 const RYD_API = 'https://returnyoutubedislikeapi.com/votes?videoId=';
 const cache = new Map<string, RYDData>();
+const MAX_CACHE_SIZE = 100;
 
 let badgeElement: HTMLElement | null = null;
 let currentVideoID: VideoID | null = null;
@@ -66,7 +63,18 @@ function updateBadge(data: RYDData | null) {
   const dislikeText = formatCount(data.dislikes);
   const ratioText = calculateRatio(data.likes, data.dislikes);
 
-  badge.innerHTML = `<span class="ytaf-ryd-dislike-icon">👎</span> <span>${dislikeText}</span> <span class="ytaf-ryd-ratio">(${ratioText})</span>`;
+  const span = (text: string, className?: string) => {
+    const el = document.createElement('span');
+    if (className) el.className = className;
+    el.textContent = text;
+    return el;
+  };
+  badge.textContent = '';
+  badge.appendChild(span('👎', 'ytaf-ryd-dislike-icon'));
+  badge.appendChild(document.createTextNode(' '));
+  badge.appendChild(span(dislikeText));
+  badge.appendChild(document.createTextNode(' '));
+  badge.appendChild(span(`(${ratioText})`, 'ytaf-ryd-ratio'));
   badge.classList.remove('ytaf-ryd-badge-hidden');
 }
 
@@ -134,13 +142,32 @@ async function fetchDislikes(videoID: string): Promise<RYDData | null> {
   }
 
   try {
-    const response = await fetch(`${RYD_API}${encodeURIComponent(videoID)}`);
+    const response = await fetch(`${RYD_API}${encodeURIComponent(videoID)}`, {
+      credentials: 'omit',
+      referrerPolicy: 'no-referrer'
+    });
     if (!response.ok) {
       console.warn('[return-dislikes] API response not ok:', response.status);
       return null;
     }
 
-    const data: RYDData = await response.json();
+    // Third-party API: keep only the numbers we use.
+    const json = (await response.json()) as Partial<RYDData> | null;
+    const { likes, dislikes } = json ?? {};
+    if (
+      !Number.isFinite(likes) ||
+      !Number.isFinite(dislikes) ||
+      likes! < 0 ||
+      dislikes! < 0
+    ) {
+      console.warn('[return-dislikes] Invalid API response');
+      return null;
+    }
+    const data: RYDData = { likes: likes!, dislikes: dislikes! };
+
+    if (cache.size >= MAX_CACHE_SIZE) {
+      cache.delete(cache.keys().next().value!);
+    }
     cache.set(videoID, data);
     return data;
   } catch (err) {
