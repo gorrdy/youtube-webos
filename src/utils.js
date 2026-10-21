@@ -1,9 +1,13 @@
 const CONTENT_INTENT_REGEX = /^.+(?=Content)/g;
 
 export function extractLaunchParams() {
-  if (window.launchParams) {
-    return JSON.parse(window.launchParams);
-  } else {
+  if (!window.launchParams) return {};
+
+  try {
+    const params = JSON.parse(window.launchParams);
+    return params && typeof params === 'object' ? params : {};
+  } catch (err) {
+    console.warn('Ignoring invalid launch params', err);
     return {};
   }
 }
@@ -42,25 +46,52 @@ function concatSearchParams(a, b) {
   return new URLSearchParams([...a.entries(), ...b.entries()]);
 }
 
-export function handleLaunch(params) {
-  console.info('handleLaunch', params);
+/**
+ * Parses `target` if it's an absolute URL, otherwise returns null.
+ * @param {string} target
+ */
+function parseAbsoluteURL(target) {
+  try {
+    return new URL(target);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The URL to open for launch params. Launch params can come from other
+ * devices (casting), so they must not be able to navigate the app anywhere
+ * but YouTube's TV page.
+ * @param {any} params
+ * @returns {URL}
+ */
+export function getLaunchURL(params) {
   let ytURL = getYTURL();
 
   // We use our custom "target" param, since launches with "contentTarget"
   // parameter do not respect "handlesRelaunch" appinfo option. We still
   // fallback to "contentTarget" if our custom param is not specified.
   //
-  let { target, contentTarget = target } = params;
+  let { target, contentTarget = target } = params ?? {};
 
   /** TODO: Handle google assistant
    * Sample: {contentTarget: "v=v=<ID>", storeCaller: "voice", subReason: "voiceAgent", voiceEngine: "googleAssistant"}
    */
 
-  switch (typeof contentTarget) {
+  switch (contentTarget === null ? 'null' : typeof contentTarget) {
     case 'string': {
-      if (isSameOrigin(contentTarget, ytURL.origin)) {
-        console.info('Launching from direct contentTarget');
-        ytURL = contentTarget;
+      const url = parseAbsoluteURL(contentTarget);
+      if (url) {
+        // Normalized, so the check and the navigation can't disagree.
+        if (
+          isSameOrigin(url.href, ytURL.origin) &&
+          url.pathname === ytURL.pathname
+        ) {
+          console.info('Launching from direct contentTarget');
+          ytURL = url;
+        } else {
+          console.warn('Ignoring contentTarget outside YouTube TV');
+        }
       } else {
         // Out of app dial launch with second screen on home: { contentTarget: 'pairingCode=<UUID>&theme=cl&dialLaunch=watch' }
         console.info('Launching from partial contentTarget');
@@ -75,9 +106,13 @@ export function handleLaunch(params) {
       break;
     }
     case 'object': {
+      const { intent, intentParam } = contentTarget;
+      if (typeof intent !== 'string') {
+        console.warn('Ignoring voice launch without intent');
+        break;
+      }
       console.info('Voice launch');
 
-      const { intent, intentParam } = contentTarget;
       // Ctrl+F tvhtml5LaunchUrlComponentChanged & REQUEST_ORIGIN_GOOGLE_ASSISTANT in base.js for info
       const search = ytURL.searchParams;
       // contentTarget.intent's seen so far: PlayContent, SearchContent
@@ -101,7 +136,22 @@ export function handleLaunch(params) {
     }
   }
 
-  window.location.href = ytURL.toString();
+  return ytURL;
+}
+
+export function handleLaunch(params) {
+  // Only the keys: values can hold a DIAL pairing code.
+  console.info('handleLaunch', Object.keys(params ?? {}));
+
+  let url;
+  try {
+    url = getLaunchURL(params);
+  } catch (err) {
+    console.warn('Invalid launch params, opening YouTube', err);
+    url = getYTURL();
+  }
+
+  window.location.href = url.toString();
 }
 
 /**

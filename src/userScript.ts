@@ -8,7 +8,8 @@ import { handleLaunch } from './utils';
 document.addEventListener(
   'webOSRelaunch',
   (evt) => {
-    console.info('RELAUNCH:', evt, window.launchParams);
+    // Only the keys: values can hold a DIAL pairing code.
+    console.info('RELAUNCH:', Object.keys(evt.detail ?? {}));
     handleLaunch(evt.detail);
   },
   true
