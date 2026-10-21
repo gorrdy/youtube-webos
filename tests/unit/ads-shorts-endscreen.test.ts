@@ -88,6 +88,63 @@ describe('removeShortsFromResponse', () => {
     assert.deepEqual(r.a.gridRenderer.items, [videoTile]);
     assert.equal(r.b.sectionListRenderer.contents.length, 1);
   });
+
+  // Newer tile format, as seen in TV search results.
+  const lockup = (endpoint: string) => ({
+    lockupViewModel: {
+      rendererContext: {
+        commandContext: { onTap: { innertubeCommand: { [endpoint]: {} } } }
+      }
+    }
+  });
+  const shelf = (title: string, items: unknown[]) => ({
+    shelfRenderer: {
+      title,
+      content: { horizontalListRenderer: { items } }
+    }
+  });
+
+  test('removes Shorts lockups and shelves left with only Shorts', () => {
+    const r = {
+      contents: {
+        sectionListRenderer: {
+          contents: [
+            shelf('results', [
+              lockup('reelWatchEndpoint'),
+              lockup('watchEndpoint'),
+              lockup('reelWatchEndpoint')
+            ]),
+            shelf('only shorts', [
+              lockup('reelWatchEndpoint'),
+              lockup('reelWatchEndpoint')
+            ]),
+            shelf('filled later', [])
+          ]
+        }
+      }
+    };
+    removeShortsFromResponse(r);
+    const shelves = r.contents.sectionListRenderer.contents;
+    assert.deepEqual(
+      shelves.map((s) => s.shelfRenderer.title),
+      ['results', 'filled later']
+    );
+    assert.deepEqual(
+      shelves[0].shelfRenderer.content.horizontalListRenderer.items,
+      [lockup('watchEndpoint')]
+    );
+  });
+
+  test('keeps the Shorts player sequence', () => {
+    const r = {
+      entries: [
+        { command: { reelWatchEndpoint: { videoId: 'a' } } },
+        { command: { reelWatchEndpoint: { videoId: 'b' } } }
+      ]
+    };
+    removeShortsFromResponse(r);
+    assert.equal(r.entries.length, 2);
+  });
 });
 
 describe('removeEndscreen', () => {
