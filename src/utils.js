@@ -8,6 +8,22 @@ export function extractLaunchParams() {
   }
 }
 
+/**
+ * Whether `target` is a full URL on `origin`. A prefix check isn't enough:
+ * `https://www.youtube.com.example.com/` and `https://www.youtube.com@example.com/`
+ * both start with YouTube's origin. Launch params can come from other devices
+ * (casting), so they must not be able to navigate the app elsewhere.
+ * @param {string} target
+ * @param {string} origin
+ */
+function isSameOrigin(target, origin) {
+  try {
+    return new URL(target).origin === origin;
+  } catch {
+    return false;
+  }
+}
+
 function getYTURL() {
   const ytURL = new URL('https://www.youtube.com/tv#/');
   ytURL.searchParams.append('env_forceFullAnimation', '1');
@@ -42,7 +58,7 @@ export function handleLaunch(params) {
 
   switch (typeof contentTarget) {
     case 'string': {
-      if (contentTarget.indexOf(ytURL.origin) === 0) {
+      if (isSameOrigin(contentTarget, ytURL.origin)) {
         console.info('Launching from direct contentTarget');
         ytURL = contentTarget;
       } else {
