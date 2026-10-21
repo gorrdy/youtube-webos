@@ -19,8 +19,7 @@
     "supportsAudioGuidance": true
   },
   "vendorExtension": {
-    "userAgent": "$browserName$/$browserVersion$ ($platformName$-$platformVersion$), _TV_O18/$firmwareVersion$ (LG, $modelName$, $networkMode$)",
-    "allowCrossDomain": true
+    "userAgent": "$browserName$/$browserVersion$ ($platformName$-$platformVersion$), _TV_O18/$firmwareVersion$ (LG, $modelName$, $networkMode$)"
   },
   "deeplinkingParams": "{\"contentTarget\":\"v=$CONTENTID\"}",
   "inAppSearchParams": "{\"target\":\"q=$SEARCH_KEYWORD\"}",
