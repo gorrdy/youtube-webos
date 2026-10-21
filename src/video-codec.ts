@@ -1,8 +1,9 @@
 import { configRead } from './config';
+import { JsonParseRegistry } from './hooks/json-parse';
 import { getPlayerManager, PlayerMode } from './player_api';
 import type { EventMapOf, PlayerManager, VideoQualityData } from './player_api';
+import { forceVp09, isVp09MimeType } from './response-filters/vp9';
 
-const VP09_CODEC = 'vp09';
 const AV1_CODEC = 'av01';
 const VP9_FORMAT_IDS = new Set([
   '278',
@@ -27,32 +28,12 @@ const VP9_FORMAT_IDS = new Set([
   '337'
 ]);
 
-interface StreamingFormat {
-  mimeType?: string;
-  [key: string]: unknown;
-}
-
-interface StreamingData {
-  formats?: StreamingFormat[];
-  adaptiveFormats?: StreamingFormat[];
-  [key: string]: unknown;
-}
-
-interface PlayerResponse {
-  streamingData?: StreamingData;
-  [key: string]: unknown;
-}
-
 function shouldForce() {
   return configRead('forceVp9Codec');
 }
 
 function isAv1MimeType(mimeType: string | undefined) {
   return mimeType?.includes(AV1_CODEC) ?? false;
-}
-
-function isVp09MimeType(mimeType: string | undefined) {
-  return mimeType?.includes(VP09_CODEC) ?? false;
 }
 
 export function isVp9FormatId(formatId: string | undefined) {
@@ -67,62 +48,9 @@ export function getPreferredVp9FormatId(
   })?.formatId;
 }
 
-function isVideoFormat(format: StreamingFormat) {
-  return format.mimeType?.startsWith('video/') ?? false;
-}
-
-function isVp09Format(format: StreamingFormat) {
-  return isVp09MimeType(format.mimeType);
-}
-
-function filterFormats(formats: StreamingFormat[] | undefined) {
-  if (!formats) return 0;
-
-  const hasVp09Video = formats.some(
-    (format) => isVideoFormat(format) && isVp09Format(format)
-  );
-  if (!hasVp09Video) return 0;
-
-  const originalLength = formats.length;
-  formats.splice(
-    0,
-    formats.length,
-    ...formats.filter(
-      (format) => !isVideoFormat(format) || isVp09Format(format)
-    )
-  );
-
-  return originalLength - formats.length;
-}
-
-function forceVp09(playerResponse: PlayerResponse | null) {
-  if (!shouldForce()) return;
-
-  // `JSON.parse` can return `null` or other primitives.
-  if (typeof playerResponse !== 'object' || playerResponse === null) return;
-
-  const streamingData = playerResponse.streamingData;
-  if (!streamingData) return;
-
-  const removedFormats = filterFormats(streamingData.formats);
-  const removedAdaptiveFormats = filterFormats(streamingData.adaptiveFormats);
-  const removedTotal = removedFormats + removedAdaptiveFormats;
-
-  if (removedTotal > 0) {
-    console.info(
-      `[video-codec] Filtered ${removedTotal} non-VP09 video formats`
-    );
-  }
-}
-
-const origParse = JSON.parse;
-JSON.parse = function (text, reviver) {
-  const r = origParse(text, reviver);
-
-  forceVp09(r);
-
-  return r;
-};
+JsonParseRegistry.getInstance().addFilter('video-codec', (r) => {
+  if (shouldForce()) forceVp09(r);
+});
 
 const originalCanPlayType = HTMLMediaElement.prototype.canPlayType;
 HTMLMediaElement.prototype.canPlayType = function (mimeType) {
