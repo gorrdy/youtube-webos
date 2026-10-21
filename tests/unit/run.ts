@@ -1,5 +1,5 @@
 // Runs every *.test.ts in this directory. The TypeScript sources need a
-// transpiler, so this runs through jiti: `pnpm run test:json-hooks`.
+// transpiler, so this runs through jiti: `pnpm run test:unit`.
 import { readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';

@@ -64,9 +64,9 @@
 >   the app.
 > - `node tools/tv/cdp.cjs eval '<js>' | key <keyCode> | monitor [seconds]`
 >   inspects the running app through the web inspector.
-> - `pnpm run test:json-hooks` tests the JSON response filters in
->   `src/response-filters/`, which every `JSON.parse` filter now goes through
->   (`src/hooks/json-parse.ts`).
+> - `pnpm run test:unit` runs the unit tests, mainly for the JSON response
+>   filters in `src/response-filters/`, which every `JSON.parse` filter now
+>   goes through (`src/hooks/json-parse.ts`).
 
 ---
 
