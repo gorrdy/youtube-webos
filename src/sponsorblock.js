@@ -1,6 +1,7 @@
 import sha256 from 'tiny-sha256';
 import { configRead } from './config';
 import { getKeyColor } from './remote-keys.js';
+import { getValidSegments } from './sponsorblock-segments.js';
 import { showNotification } from './ui';
 
 // Copied from https://github.com/ajayyy/SponsorBlock/blob/9392d16617d2d48abb6125c00e2ff6042cb7bebe/src/config.ts#L179-L233
@@ -60,6 +61,7 @@ class SponsorBlockHandler {
   durationChangeHandler = null;
   keyHandler = null;
   pendingSkip = null;
+  fetchController = null;
   segments = null;
   skippableCategories = [];
 
@@ -78,22 +80,37 @@ class SponsorBlockHandler {
       'music_offtopic',
       'preview'
     ];
+    // Not available on older webOS.
+    this.fetchController =
+      typeof AbortController === 'function' ? new AbortController() : null;
     const resp = await fetch(
       `${sponsorblockAPI}/skipSegments/${videoHash}?categories=${encodeURIComponent(
         JSON.stringify(categories)
-      )}`
+      )}`,
+      {
+        credentials: 'omit',
+        referrerPolicy: 'no-referrer',
+        signal: this.fetchController?.signal
+      }
     );
+    if (!this.active) return;
+    if (!resp.ok) {
+      console.debug(this.videoID, 'No segments found.', resp.status);
+      return;
+    }
     const results = await resp.json();
+    // Destroyed while loading, e.g. the user moved on to another video.
+    if (!this.active) return;
 
-    const result = results.find((v) => v.videoID === this.videoID);
-    console.debug(this.videoID, 'Got it:', result);
+    const segments = getValidSegments(results, this.videoID, categories);
+    console.debug(this.videoID, 'Got it:', segments);
 
-    if (!result || !result.segments || !result.segments.length) {
+    if (!segments.length) {
       console.debug(this.videoID, 'No segments found.');
       return;
     }
 
-    this.segments = result.segments;
+    this.segments = segments;
     this.skippableCategories = this.getSkippableCategories();
 
     this.scheduleSkipHandler = () => this.scheduleSkip();
@@ -265,7 +282,11 @@ class SponsorBlockHandler {
     const nextSegments = this.segments.filter(
       (seg) =>
         seg.segment[0] > this.video.currentTime - 0.3 &&
-        seg.segment[1] > this.video.currentTime - 0.3
+        // Strictly ahead, so landing on a segment's end after skipping it
+        // doesn't pick the same (or an overlapping) segment up again.
+        seg.segment[1] > this.video.currentTime + 0.05 &&
+        // Segments past the end of the video would skip to its end.
+        !(seg.segment[0] > this.video.duration)
     );
     nextSegments.sort((s1, s2) => s1.segment[0] - s2.segment[0]);
 
@@ -312,7 +333,8 @@ class SponsorBlockHandler {
         this.video.currentTime = end;
         this.scheduleSkip();
       },
-      (start - this.video.currentTime) * 1000
+      // Delays over 2^31 ms overflow and would fire immediately.
+      Math.min((start - this.video.currentTime) * 1000, 2 ** 31 - 1)
     );
   }
 
@@ -333,7 +355,16 @@ class SponsorBlockHandler {
     if (getKeyColor(evt.keyCode || evt.charCode) !== 'red') return;
 
     const segment = this.pendingSkip;
-    if (!segment || this.video.currentTime >= segment.segment[1]) return;
+    if (!segment) return;
+
+    // Only while the offered segment is playing; don't hold the red button
+    // for the rest of the video.
+    const [start, end] = segment.segment;
+    const time = this.video.currentTime;
+    if (time < start - 1 || time >= end) {
+      this.pendingSkip = null;
+      return;
+    }
 
     evt.preventDefault();
     evt.stopPropagation();
@@ -350,6 +381,7 @@ class SponsorBlockHandler {
     console.debug(this.videoID, 'Destroying');
 
     this.active = false;
+    this.fetchController?.abort();
 
     if (this.keyHandler) {
       document.removeEventListener('keydown', this.keyHandler, true);
@@ -443,7 +475,12 @@ function handleLocationChange() {
 
     if (configRead('enableSponsorBlock')) {
       window.sponsorblock = new SponsorBlockHandler(videoID);
-      window.sponsorblock.init();
+      window.sponsorblock.init().catch((err) => {
+        // Aborted when the video changes while segments are loading.
+        if (err?.name !== 'AbortError') {
+          console.warn('SponsorBlock failed to load segments', err);
+        }
+      });
     } else {
       console.info('SponsorBlock disabled, not loading');
     }
