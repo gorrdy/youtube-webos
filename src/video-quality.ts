@@ -42,10 +42,20 @@ function restoreResumePosition(
   const POLL_MS = 100;
   const started = Date.now();
 
+  // A seek to the start is the user's own doing; never undo it.
+  let userActed = false;
+  const onKey = () => (userActed = true);
+  document.addEventListener('keydown', onKey, true);
+
+  const stop = () => {
+    clearInterval(intervalToken);
+    document.removeEventListener('keydown', onKey, true);
+  };
+
   const intervalToken = window.setInterval(() => {
     const video = player.querySelector('video');
-    if (!video || Date.now() - started > RESTORE_WINDOW_MS) {
-      clearInterval(intervalToken);
+    if (!video || userActed || Date.now() - started > RESTORE_WINDOW_MS) {
+      stop();
       return;
     }
 
@@ -55,7 +65,7 @@ function restoreResumePosition(
         !video.paused &&
         video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA
       ) {
-        clearInterval(intervalToken);
+        stop();
       }
       return;
     }
@@ -63,7 +73,7 @@ function restoreResumePosition(
     console.info(
       `[video-quality] position reset to ${video.currentTime.toFixed(1)}s, seeking back to ${resumeTime.toFixed(1)}s`
     );
-    clearInterval(intervalToken);
+    stop();
     player.seekTo(resumeTime, true);
   }, POLL_MS);
 }

@@ -30,6 +30,16 @@ export class FetchRegistry extends CustomEventTarget<EventMap> {
     window.fetch = this.#customFetch;
   }
 
+  static #redact(init: RequestInit) {
+    const headers: Record<string, string> = {};
+    new Headers(init.headers).forEach((value, name) => {
+      headers[name] = /^(authorization|cookie)$/i.test(name)
+        ? '<redacted>'
+        : value;
+    });
+    return { ...init, headers };
+  }
+
   static async #dumpBody(resource: Request | Response) {
     if (
       !resource?.constructor?.name ||
@@ -55,8 +65,16 @@ export class FetchRegistry extends CustomEventTarget<EventMap> {
 
   #customFetch = async (resource: FetchTarget, init?: RequestInit) => {
     if (window.__ytaf_debug__) {
-      console.debug(`Request ${this.#fetchCount}:`, resource);
-      init && console.debug(`Options  ${this.#fetchCount}:`, init);
+      // Logs are readable from the dev-mode inspector: keep tokens out.
+      console.debug(
+        `Request ${this.#fetchCount}:`,
+        resource instanceof Request ? resource.url : resource
+      );
+      init &&
+        console.debug(
+          `Options  ${this.#fetchCount}:`,
+          FetchRegistry.#redact(init)
+        );
 
       if (resource instanceof Request) {
         const reqBody = await FetchRegistry.#dumpBody(resource);

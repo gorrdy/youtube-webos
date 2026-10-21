@@ -71,7 +71,8 @@ class PlayerManager
 
     const currentVideoID = this.currentVideoID;
     if (this.#lastVideoID !== currentVideoID) {
-      if (!currentVideoID) throw new Error('unexpected `null` video ID');
+      // Throwing here would break YouTube's own state change dispatch.
+      if (!currentVideoID) return;
       this.#handleNewVideo(currentVideoID);
       this.#lastVideoID = currentVideoID;
     }
@@ -114,12 +115,6 @@ export async function getPlayerManager(): Promise<PlayerManager> {
     const player = await getPlayer();
     instance = new PlayerManager(player);
   }
-
-  instance.addEventListener('playbackStart', function (event) {
-    event.type;
-    event.currentTarget?.currentVideoID;
-    event.detail;
-  });
 
   return instance;
 }
