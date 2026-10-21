@@ -1,5 +1,6 @@
 import sha256 from 'tiny-sha256';
 import { configRead } from './config';
+import { getKeyColor } from './remote-keys.js';
 import { showNotification } from './ui';
 
 // Copied from https://github.com/ajayyy/SponsorBlock/blob/9392d16617d2d48abb6125c00e2ff6042cb7bebe/src/config.ts#L179-L233
@@ -329,9 +330,7 @@ class SponsorBlockHandler {
   }
 
   handleKey(evt) {
-    // Red button: 403 on webOS, 166 after YouTube remaps it.
-    const code = evt.keyCode || evt.charCode;
-    if (code !== 403 && code !== 166) return;
+    if (getKeyColor(evt.keyCode || evt.charCode) !== 'red') return;
 
     const segment = this.pendingSkip;
     if (!segment || this.video.currentTime >= segment.segment[1]) return;

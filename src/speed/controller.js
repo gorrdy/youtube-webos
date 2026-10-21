@@ -1,3 +1,4 @@
+import { getKeyColor } from '../remote-keys.js';
 import { AudioEngine } from './audio-engine.js';
 import { isSupportedSpeed } from './timemap.js';
 
@@ -168,7 +169,7 @@ export function createSpeedController({ win, getPlayer, notify, configRead }) {
     // YTAF's ui.js reads colour keys from charCode, the webOS docs from keyCode:
     // accept both.
     const code = evt.keyCode || evt.charCode;
-    if (code === 405 || code === 170) {
+    if (getKeyColor(code) === 'yellow') {
       if (evt.type === 'keydown') {
         evt.preventDefault();
         if (evt.stopPropagation) evt.stopPropagation();

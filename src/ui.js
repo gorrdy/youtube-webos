@@ -8,39 +8,12 @@ import {
 } from './config.js';
 import './ui.css';
 import { requireElement } from './player_api/helpers';
+import { getKeyColor } from './remote-keys.js';
 
 // We handle key events ourselves.
 window.__spatialNavigation__.keyMode = 'NONE';
 
 const ARROW_KEY_CODE = { 37: 'left', 38: 'up', 39: 'right', 40: 'down' };
-
-const colorCodeMap = new Map([
-  [403, 'red'],
-  [166, 'red'],
-
-  [404, 'green'],
-  [172, 'green'],
-
-  [405, 'yellow'],
-  [170, 'yellow'],
-
-  [406, 'blue'],
-  [167, 'blue'],
-  [191, 'blue']
-]);
-
-/**
- * Returns the name of the color button associated with a code or null if not a color button.
- * @param {number} charCode KeyboardEvent.charCode property from event
- * @returns {string | null} Color name or null
- */
-function getKeyColor(charCode) {
-  if (colorCodeMap.has(charCode)) {
-    return colorCodeMap.get(charCode);
-  }
-
-  return null;
-}
 
 function createConfigCheckbox(key) {
   const elmInput = document.createElement('input');
